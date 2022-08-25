@@ -29,7 +29,7 @@ public final class Knapsack {
      * 
      * Note 1: 
      * It is very important for a state to override both equals and hashcode 
-     * as the library uses these method to reconcile equal states
+     * as the library uses these methods to reconcile equal states
      * 
      * Note 2: 
      * This class is actually not useful in the context of the knapsack. It is
@@ -75,7 +75,7 @@ public final class Knapsack {
         /** cost of takin each item */
         private final int[] cost  = new int[]{ 95,  4, 60, 32, 23, 72, 80, 62, 65, 46};
         /** benefit of takin each item */
-        private final int[] worth = new int[]{ 55, 10, 47,  5,  4, 50,  8, 61, 85, 87};
+        private final int[] value = new int[]{ 55, 10, 47,  5,  4, 50,  8, 61, 85, 87};
         /** capacity of the sack */
         private final int capacity= 269;
 
@@ -110,7 +110,7 @@ public final class Knapsack {
 
         @Override
         public int transitionCost(final KPState state, final Decision decision) {
-            return decision.val() * worth[decision.var()];
+            return decision.val() * value[decision.var()];
         }
     }
 
@@ -141,7 +141,7 @@ public final class Knapsack {
         public int estimate(final KPState state, final Set<Integer> variables) {
             int tot = 0;
             for (int i : variables) {
-                tot += problem.worth[i];
+                tot += problem.value[i];
             }
             return tot;
         }
