@@ -25,7 +25,6 @@ public final class SimpleFrontier<T> implements Frontier<T> {
         heap = new PriorityQueue<>(new SubProblemComparator<>(ranking).reversed());
     }
 
-
     @Override
     public void push(final SubProblem<T> sub) {
         heap.add(sub);
@@ -46,7 +45,7 @@ public final class SimpleFrontier<T> implements Frontier<T> {
         return heap.size();
     }
 
-    /** This utility class implements a decorator pattern to sort ubProblems by their ub then state */
+    /** This utility class implements a decorator pattern to sort SubProblems by their ub then state */
     private static final class SubProblemComparator<T> implements Comparator<SubProblem<T>>{
         /** This is the decorated ranking */
         private final StateRanking<T> delegate;

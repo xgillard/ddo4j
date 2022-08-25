@@ -8,10 +8,10 @@ import java.util.List;
 import be.uclouvain.ingi.aia.ddo4j.core.Decision;
 import be.uclouvain.ingi.aia.ddo4j.core.Problem;
 import be.uclouvain.ingi.aia.ddo4j.core.Relaxation;
-import be.uclouvain.ingi.aia.ddo4j.core.Solver;
 import be.uclouvain.ingi.aia.ddo4j.heuristics.StateRanking;
 import be.uclouvain.ingi.aia.ddo4j.heuristics.VariableHeuristic;
 import be.uclouvain.ingi.aia.ddo4j.heuristics.WidthHeuristic;
+import be.uclouvain.ingi.aia.ddo4j.implem.frontier.NoDuplicateFrontier;
 import be.uclouvain.ingi.aia.ddo4j.implem.frontier.SimpleFrontier;
 import be.uclouvain.ingi.aia.ddo4j.implem.heuristics.FixedWidth;
 import be.uclouvain.ingi.aia.ddo4j.implem.solver.ParallelSolver;
@@ -190,18 +190,23 @@ public final class Knapsack {
         KPNaturalOrder varh           = new KPNaturalOrder(problem);
         WidthHeuristic<KPState> width = new FixedWidth<>(2);
 
-        Solver solver = new ParallelSolver<>(
+        ParallelSolver<KPState> solver = new ParallelSolver<>(
             Runtime.getRuntime().availableProcessors(), 
             problem, 
             relax, 
             varh, 
             ranking, 
             width, 
+            // In this case, the model guarantees uniqueness of the state
+            // hence you are allowed to use the noduplicate frontier if 
+            // you like. But for a first example, it is maybe better to
+            // simply stick to the SimpleFrontier as shown below.
+            // new NoDuplicateFrontier<>(ranking));
             new SimpleFrontier<>(ranking));
         
         solver.maximize();
 
-        //System.out.println("Explored" + solver.explored());
+        System.out.println("Explored = " + solver.explored());
         
         int bestValue = solver.bestValue().get();
         System.out.println("best value = " + bestValue);
