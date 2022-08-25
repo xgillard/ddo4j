@@ -37,15 +37,15 @@ public final class Knapsack {
      * a class that correctly overrides equals and hashcode.
      */
     private static class KPState {
-        private int remaining;
+        private int capacity;
 
-        public KPState(final int remaining) {
-            this.remaining = remaining;
+        public KPState(final int capacity) {
+            this.capacity = capacity;
         }
 
         @Override
         public int hashCode() {
-            return remaining;
+            return capacity;
         }
         @Override
         public boolean equals(final Object o) {
@@ -53,7 +53,7 @@ public final class Knapsack {
                 return false;
             } else {
                 KPState that = (KPState) o;
-                return this.remaining == that.remaining;
+                return this.capacity == that.capacity;
             }
         }
     }
@@ -96,7 +96,7 @@ public final class Knapsack {
 
         @Override
         public Iterator<Integer> domain(final KPState state, final int var) {
-            if (state.remaining >= cost[var]) {
+            if (state.capacity >= cost[var]) {
                 return DOM_YES_NO.iterator();
             } else {
                 return DOM_NO.iterator();
@@ -105,7 +105,7 @@ public final class Knapsack {
 
         @Override
         public KPState transition(final KPState state, final Decision decision) {
-            return new KPState(state.remaining - (decision.val() * cost[decision.var()]));
+            return new KPState(state.capacity - (decision.val() * cost[decision.var()]));
         }
 
         @Override
@@ -127,7 +127,7 @@ public final class Knapsack {
             int merged = Integer.MIN_VALUE;
             while (states.hasNext()) {
                 KPState next = states.next();
-                merged = Math.max(next.remaining, merged);
+                merged = Math.max(next.capacity, merged);
             }
             return new KPState(merged);
         }
@@ -138,7 +138,7 @@ public final class Knapsack {
         }
 
         @Override
-        public int estimate(final KPState state, final Set<Integer> variables) {
+        public int fastUpperBound(final KPState state, final Set<Integer> variables) {
             int tot = 0;
             for (int i : variables) {
                 tot += problem.value[i];
@@ -151,7 +151,7 @@ public final class Knapsack {
     private static final class KPRanking implements StateRanking<KPState> {
         @Override
         public int compare(KPState o1, KPState o2) {
-            return o1.remaining - o2.remaining;
+            return o1.capacity - o2.capacity;
         }
     }
 

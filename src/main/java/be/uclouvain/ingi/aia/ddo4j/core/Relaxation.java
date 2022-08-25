@@ -37,12 +37,13 @@ public interface Relaxation<T> {
     int relaxEdge(final T from, final T to, final T merged, final Decision d, final int cost);
 
     /**
-     * @return a very rough estimation of the optimal value that could be reached if state were the initial state
+     * @return a very rough estimation (upper bound) of the optimal value that could be
+     *  reached if state were the initial state
      * 
      * @param state the state for which the estimate is to be computed
      * @param variable the set of unassigned variables
      */
-    default int estimate(final T state, final Set<Integer> variables) { 
+    default int fastUpperBound(final T state, final Set<Integer> variables) { 
         return Integer.MAX_VALUE;
     };
 }

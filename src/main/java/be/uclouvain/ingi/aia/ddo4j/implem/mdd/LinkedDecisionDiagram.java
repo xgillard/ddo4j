@@ -171,7 +171,7 @@ public final class LinkedDecisionDiagram<T> implements DecisionDiagram<T> {
                 T state   = e.getKey();
                 Node node = e.getValue();
 
-                int rub  = saturatedAdd(node.value, input.getRelaxation().estimate(state, variables));
+                int rub  = saturatedAdd(node.value, input.getRelaxation().fastUpperBound(state, variables));
                 this.currentLayer.add(new NodeSubProblem<>(state, rub, node));
             }
             this.nextLayer.clear();
@@ -352,7 +352,7 @@ public final class LinkedDecisionDiagram<T> implements DecisionDiagram<T> {
 
         // redirect and relax all arcs entering the merged node
         for (NodeSubProblem<T> drop : merge) {
-            node.ub         = Math.max(node.ub, drop.ub);
+            node.ub = Math.max(node.ub, drop.ub);
             
             for (Edge e : drop.node.edges) {
                 int rcost = relax.relaxEdge(prevLayer.get(e.origin).state, drop.state, merged, e.decision, e.weight);
@@ -440,7 +440,7 @@ public final class LinkedDecisionDiagram<T> implements DecisionDiagram<T> {
     private static final int saturatedAdd(int a, int b) {
         long sum = (long) a + (long) b;
         sum = sum >= Integer.MAX_VALUE ? Integer.MAX_VALUE : sum;
-        sum = sum <= Integer.MAX_VALUE ? Integer.MAX_VALUE : sum;
+        sum = sum <= Integer.MIN_VALUE ? Integer.MIN_VALUE : sum;
         return (int) sum;
     }
 
