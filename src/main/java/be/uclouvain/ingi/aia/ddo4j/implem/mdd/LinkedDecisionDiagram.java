@@ -152,16 +152,13 @@ public final class LinkedDecisionDiagram<T> implements DecisionDiagram<T> {
         final Relaxation<T> relax      = input.getRelaxation();
         final VariableHeuristic<T> var = input.getVariableHeuristic();
         final NodeSubroblemComparator<T> ranking = new NodeSubroblemComparator<>(input.getStateRanking());
+
+        final Set<Integer> variables = varSet(input);
         //
         int depth = 0;
 
-        while (true) {
-            Integer nextvar = var.nextVariable(nextLayer.keySet().iterator());
-            // there are no variables left on which I could branch
-            if (nextvar == null) {
-                break;
-            }
-
+        while (!variables.isEmpty()) {
+            Integer nextvar = var.nextVariable(variables, nextLayer.keySet().iterator());
             // change the layer focus: what was previously the next layer is now
             // becoming the current layer
             this.prevLayer.clear();
@@ -173,7 +170,7 @@ public final class LinkedDecisionDiagram<T> implements DecisionDiagram<T> {
             for (Entry<T, Node> e : this.nextLayer.entrySet()) {
                 T state   = e.getKey();
                 Node node = e.getValue();
-                int rub   = node.value + input.getRelaxation().estimate(state);
+                int rub   = node.value + input.getRelaxation().estimate(state, variables);
 
                 this.currentLayer.add(new NodeSubProblem<>(state, rub, node));
             }
@@ -183,6 +180,15 @@ public final class LinkedDecisionDiagram<T> implements DecisionDiagram<T> {
                 // there is no feasible solution to this subproblem, we can stop the compilation here
                 return;
             }
+
+            if (nextvar == null) {
+                // Some variables simply can't be assigned
+                clear();
+                return;
+            } else {
+                variables.remove(nextvar);
+            }
+
 
             // If the current layer is too large, we need to shrink it down. 
             // Whether this shrinking down means that we want to perform a restriction
@@ -278,6 +284,17 @@ public final class LinkedDecisionDiagram<T> implements DecisionDiagram<T> {
     }
     
     // --- UTILITY METHODS -----------------------------------------------
+    private Set<Integer> varSet(final CompilationInput<T> input) {
+        final HashSet<Integer> set = new HashSet<>();
+        for (int i = 0; i < input.getProblem().nbVars(); i++) {
+            set.add(i);
+        }
+
+        for (Decision d : input.getResidual().getPath()) {
+            set.remove(d.var());
+        }
+        return set;
+    }
     /** Reset the state of this MDD. This way it can easily be reused */
     private void clear() {
         pathToRoot = Collections.emptySet();

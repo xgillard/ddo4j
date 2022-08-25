@@ -1,6 +1,7 @@
 package be.uclouvain.ingi.aia.ddo4j.core;
 
 import java.util.Iterator;
+import java.util.Set;
 
 /**
  * This is the second most important abstraction that a client should provide 
@@ -37,8 +38,11 @@ public interface Relaxation<T> {
 
     /**
      * @return a very rough estimation of the optimal value that could be reached if state were the initial state
+     * 
+     * @param state the state for which the estimate is to be computed
+     * @param variable the set of unassigned variables
      */
-    default int estimate(final T state) { 
+    default int estimate(final T state, final Set<Integer> variables) { 
         return Integer.MAX_VALUE;
     };
 }

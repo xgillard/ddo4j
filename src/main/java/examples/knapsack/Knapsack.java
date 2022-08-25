@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import be.uclouvain.ingi.aia.ddo4j.core.Decision;
 import be.uclouvain.ingi.aia.ddo4j.core.Problem;
@@ -25,22 +26,25 @@ public final class Knapsack {
     /** 
      * This is the state in the knapsack.
      * 
-     * Note: 
+     * Note 1: 
      * It is very important for a state to override both equals and hashcode 
      * as the library uses these method to reconcile equal states
+     * 
+     * Note 2: 
+     * This class is actually not useful in the context of the knapsack. It is
+     * only present to show that a state can be any POJO provided that you use
+     * a class that correctly overrides equals and hashcode.
      */
     private static class KPState {
         private int remaining;
-        private int depth;
 
-        public KPState(final int remaining, final int depth) {
+        public KPState(final int remaining) {
             this.remaining = remaining;
-            this.depth     = depth;
         }
 
         @Override
         public int hashCode() {
-            return remaining + depth * 31;
+            return remaining;
         }
         @Override
         public boolean equals(final Object o) {
@@ -48,12 +52,8 @@ public final class Knapsack {
                 return false;
             } else {
                 KPState that = (KPState) o;
-                return this.remaining == that.remaining && this.depth == that.depth;
+                return this.remaining == that.remaining;
             }
-        }
-
-        public String toString() {
-            return "depth = " + depth + "  rem = " + remaining;
         }
     }
     
@@ -85,7 +85,7 @@ public final class Knapsack {
 
         @Override
         public KPState intialState() {
-            return new KPState(capacity, 0);
+            return new KPState(capacity);
         }
 
         @Override
@@ -104,7 +104,7 @@ public final class Knapsack {
 
         @Override
         public KPState transition(final KPState state, final Decision decision) {
-            return new KPState(state.remaining - (decision.val() * cost[decision.var()]), state.depth + 1);
+            return new KPState(state.remaining - (decision.val() * cost[decision.var()]));
         }
 
         @Override
@@ -124,13 +124,11 @@ public final class Knapsack {
         @Override
         public KPState mergeStates(final Iterator<KPState> states) {
             int merged = Integer.MIN_VALUE;
-            int depth  = 0;
             while (states.hasNext()) {
                 KPState next = states.next();
-                depth  = Math.max(next.depth, 0);
                 merged = Math.max(next.remaining, merged);
             }
-            return new KPState(merged, depth);
+            return new KPState(merged);
         }
 
         @Override
@@ -139,9 +137,9 @@ public final class Knapsack {
         }
 
         @Override
-        public int estimate(final KPState state) {
+        public int estimate(final KPState state, final Set<Integer> variables) {
             int tot = 0;
-            for (int i = state.depth; i < problem.nbVars(); i++) {
+            for (int i : variables) {
                 tot += problem.worth[i];
             }
             return tot;
@@ -161,23 +159,14 @@ public final class Knapsack {
      * (in this case it is the natural order)
      */
     private static final class KPNaturalOrder implements VariableHeuristic<KPState> {
-        private final KPProblem problem;
-
-        public KPNaturalOrder(final KPProblem problem) {
-            this.problem = problem;
-        }
+        public KPNaturalOrder() {}
 
         @Override
-        public Integer nextVariable(Iterator<KPState> states) {
-            if (states.hasNext()) {
-                int depth = states.next().depth;
-                if (depth >= problem.nbVars()) {
-                    return null;
-                } else {
-                    return depth;
-                }
-            } else {
+        public Integer nextVariable(final Set<Integer> variables, Iterator<KPState> states) {
+            if (variables.isEmpty()) {
                 return null;
+            } else {
+                return variables.iterator().next();
             }
         }
     }
@@ -187,7 +176,7 @@ public final class Knapsack {
         KPProblem problem             = new KPProblem();
         KPRelax relax                 = new KPRelax(problem);
         KPRanking ranking             = new KPRanking();
-        KPNaturalOrder varh           = new KPNaturalOrder(problem);
+        KPNaturalOrder varh           = new KPNaturalOrder();
         WidthHeuristic<KPState> width = new FixedWidth<>(2);
 
         ParallelSolver<KPState> solver = new ParallelSolver<>(
