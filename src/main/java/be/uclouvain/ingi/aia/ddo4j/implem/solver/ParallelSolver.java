@@ -262,8 +262,12 @@ public final class ParallelSolver<T> implements Solver {
             SubProblem<T> nn = critical.frontier.pop();
             if (nn.getUpperBound() <= critical.bestLB) {
                 critical.frontier.clear();
-                try { critical.wait(); } catch (InterruptedException e) {}
-                return new Workload<>(WorkloadStatus.Starvation, null);
+                if (critical.ongoing == 0) {
+                    return new Workload<>(WorkloadStatus.Complete, null);
+                } else {
+                    try { critical.wait(); } catch (InterruptedException e) {}
+                    return new Workload<>(WorkloadStatus.Starvation, null);
+                }
             }
 
             // Consume the current node and process it
