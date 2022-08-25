@@ -14,6 +14,7 @@ import be.uclouvain.ingi.aia.ddo4j.heuristics.VariableHeuristic;
 import be.uclouvain.ingi.aia.ddo4j.heuristics.WidthHeuristic;
 import be.uclouvain.ingi.aia.ddo4j.implem.frontier.NoDuplicateFrontier;
 import be.uclouvain.ingi.aia.ddo4j.implem.frontier.SimpleFrontier;
+import be.uclouvain.ingi.aia.ddo4j.implem.heuristics.DefaultVariableHeuristic;
 import be.uclouvain.ingi.aia.ddo4j.implem.heuristics.FixedWidth;
 import be.uclouvain.ingi.aia.ddo4j.implem.solver.ParallelSolver;
 
@@ -154,32 +155,14 @@ public final class Knapsack {
         }
     }
 
-    /** 
-     * An heuristic to decide the order in which variables are to be branched upon
-     * (in this case it is the natural order)
-     */
-    private static final class KPNaturalOrder implements VariableHeuristic<KPState> {
-        public KPNaturalOrder() {}
-
-        @Override
-        public Integer nextVariable(final Set<Integer> variables, Iterator<KPState> states) {
-            if (variables.isEmpty()) {
-                return null;
-            } else {
-                return variables.iterator().next();
-            }
-        }
-    }
-
     /** The exemple entry point */
     public static void main(final String[] args) {
-        KPProblem problem             = new KPProblem();
-        KPRelax relax                 = new KPRelax(problem);
-        KPRanking ranking             = new KPRanking();
-        KPNaturalOrder varh           = new KPNaturalOrder();
-        WidthHeuristic<KPState> width = new FixedWidth<>(2);
-
-        ParallelSolver<KPState> solver = new ParallelSolver<>(
+        KPProblem problem               = new KPProblem();
+        KPRelax relax                   = new KPRelax(problem);
+        KPRanking ranking               = new KPRanking();
+        VariableHeuristic<KPState> varh = new DefaultVariableHeuristic<>();
+        WidthHeuristic<KPState> width   = new FixedWidth<>(2);
+        ParallelSolver<KPState> solver  = new ParallelSolver<>(
             Runtime.getRuntime().availableProcessors(), 
             problem, 
             relax, 
