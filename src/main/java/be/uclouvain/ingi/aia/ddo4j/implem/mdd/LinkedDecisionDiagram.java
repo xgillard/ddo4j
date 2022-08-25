@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.Map.Entry;
 
 import be.uclouvain.ingi.aia.ddo4j.core.CompilationInput;
+import be.uclouvain.ingi.aia.ddo4j.core.CompilationType;
 import be.uclouvain.ingi.aia.ddo4j.core.Decision;
 import be.uclouvain.ingi.aia.ddo4j.core.DecisionDiagram;
 import be.uclouvain.ingi.aia.ddo4j.core.Problem;
@@ -27,7 +28,7 @@ public final class LinkedDecisionDiagram<T> implements DecisionDiagram<T> {
     /** The list of decisions that have led to the root of this DD */
     private Set<Decision> pathToRoot = Collections.emptySet();
     /** All the nodes from the previous layer */
-    private HashMap<Node, T> prevLayer = new HashMap<Node, T>();
+    private HashMap<Node, NodeSubProblem<T>> prevLayer = new HashMap<>();
     /** All the (subproblems) nodes from the previous layer -- That is, all nodes that will be expanded */
     private List<NodeSubProblem<T>> currentLayer = new ArrayList<>();
     /** All the nodes from the next layer */
@@ -45,6 +46,8 @@ public final class LinkedDecisionDiagram<T> implements DecisionDiagram<T> {
     private static final class Node {
         /** The length of the longest path to this node */
         private int value;
+        /** The length of the longest suffix of this node (bottom part of a local bound) */
+        private Integer suffix;
         /** The edge terminating the longest path to this node */
         private Edge best;
         /** The list of edges leading to this node */
@@ -52,9 +55,10 @@ public final class LinkedDecisionDiagram<T> implements DecisionDiagram<T> {
 
         /** Creates a new node */
         public Node(final int value) {
-            this.value = value;
-            this.best  = null;
-            this.edges = new ArrayList<>();
+            this.value  = value;
+            this.suffix = null;
+            this.best   = null;
+            this.edges  = new ArrayList<>();
         }
     }
     /**
@@ -121,11 +125,15 @@ public final class LinkedDecisionDiagram<T> implements DecisionDiagram<T> {
                 e = e.origin == null ? null : e.origin.best;
             }
 
+            int locb = Integer.MIN_VALUE;
+            if (node.suffix != null) {
+                locb = node.value + node.suffix;
+            }
+            ub = Math.min(ub, locb);
+
             return new SubProblem<>(state, node.value, ub, path);
         }
     }
-    
-
 
     @Override
     public void compile(CompilationInput<T> input) {
@@ -157,10 +165,11 @@ public final class LinkedDecisionDiagram<T> implements DecisionDiagram<T> {
             // change the layer focus: what was previously the next layer is now
             // becoming the current layer
             this.prevLayer.clear();
-            for (NodeSubProblem<T> n: this.currentLayer) {
-                this.prevLayer.put(n.node, n.state);
+            for (NodeSubProblem<T> n : this.currentLayer) {
+                this.prevLayer.put(n.node, n);
             }
             this.currentLayer.clear();
+
             for (Entry<T, Node> e : this.nextLayer.entrySet()) {
                 T state   = e.getKey();
                 Node node = e.getValue();
@@ -179,7 +188,14 @@ public final class LinkedDecisionDiagram<T> implements DecisionDiagram<T> {
             // Whether this shrinking down means that we want to perform a restriction
             // or a relaxation depends on the type of compilation which has been 
             // requested from this decision diagram  
-            if (depth >= 1 && currentLayer.size() > maxWidth) {
+            //
+            // IMPORTANT NOTE:
+            // The check is on depth 2 because the method maybeSaveLel() saves the parent
+            // of the current layer if a LEL is to be remembered. In order to be sure
+            // to make progress, we must be certain to develop AT LEAST one layer per 
+            // mdd compiled otherwise the LEL is going to be the root of this MDD (and
+            // we would be stuck in an infinite loop)
+            if (depth >= 2 && currentLayer.size() > maxWidth) {
                 switch (input.getCompilationType()) {
                     case Restricted:
                         maybeSaveLel();
@@ -219,7 +235,10 @@ public final class LinkedDecisionDiagram<T> implements DecisionDiagram<T> {
             }
         }
 
-        // TODO: Compute local bounds
+        // Compute the local bounds of the nodes in the mdd *iff* this is a relaxed mdd
+        if (input.getCompilationType() == CompilationType.Relaxed) {
+            computeLocalBounds();
+        }
     }
 
     @Override
@@ -271,7 +290,7 @@ public final class LinkedDecisionDiagram<T> implements DecisionDiagram<T> {
     /** Saves the last exact layer cutset if needed */
     private void maybeSaveLel() {
         if (lel.isEmpty()) {
-            lel.addAll(currentLayer);
+            lel.addAll(prevLayer.values());
         }
     }
     /**
@@ -319,7 +338,7 @@ public final class LinkedDecisionDiagram<T> implements DecisionDiagram<T> {
             node.ub         = Math.max(node.ub, drop.ub);
             
             for (Edge e : drop.node.edges) {
-                int rcost = relax.relaxEdge(prevLayer.get(e.origin), drop.state, merged, e.decision, e.weight);
+                int rcost = relax.relaxEdge(prevLayer.get(e.origin).state, drop.state, merged, e.decision, e.weight);
 
                 int value = e.origin.value + rcost;
                 e.weight  = rcost;
@@ -365,6 +384,38 @@ public final class LinkedDecisionDiagram<T> implements DecisionDiagram<T> {
         if (value >= n.value) {
             n.best = edge;
             n.value= value;
+        }
+    }
+    
+    /** Performs a bottom up traversal of the mdd to compute the local bounds */
+    private void computeLocalBounds() {
+        HashSet<Node> current = new HashSet<>();
+        HashSet<Node> parent  = new HashSet<>();
+        parent.addAll(nextLayer.values());
+
+        for (Node n : parent) {
+            n.suffix = 0;
+        }
+
+        while (!parent.isEmpty()) {
+            HashSet<Node> tmp = current;
+            current = parent;
+            parent  = tmp;
+            parent.clear();
+
+            for (Node n : current) {
+                for (Edge e : n.edges) {
+                    // Note: we might want to do something and stop as soon as the lel has been reached
+                    Node origin = e.origin;
+                    parent.add(origin);
+
+                    if (origin.suffix == null) {
+                        origin.suffix = n.suffix + e.weight;
+                    } else {
+                        origin.suffix = Math.max(origin.suffix, n.suffix + e.weight);
+                    }
+                }
+            }
         }
     }
 

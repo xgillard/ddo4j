@@ -188,7 +188,7 @@ public final class Knapsack {
         KPRelax relax                 = new KPRelax(problem);
         KPRanking ranking             = new KPRanking();
         KPNaturalOrder varh           = new KPNaturalOrder(problem);
-        WidthHeuristic<KPState> width = new FixedWidth<>(5);
+        WidthHeuristic<KPState> width = new FixedWidth<>(2);
 
         Solver solver = new ParallelSolver<>(
             Runtime.getRuntime().availableProcessors(), 
@@ -200,6 +200,8 @@ public final class Knapsack {
             new SimpleFrontier<>(ranking));
         
         solver.maximize();
+
+        //System.out.println("Explored" + solver.explored());
         
         int bestValue = solver.bestValue().get();
         System.out.println("best value = " + bestValue);
