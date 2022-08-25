@@ -127,7 +127,7 @@ public final class LinkedDecisionDiagram<T> implements DecisionDiagram<T> {
 
             int locb = Integer.MIN_VALUE;
             if (node.suffix != null) {
-                locb = node.value + node.suffix;
+                locb = saturatedAdd(node.value, node.suffix);
             }
             ub = Math.min(ub, locb);
 
@@ -170,8 +170,8 @@ public final class LinkedDecisionDiagram<T> implements DecisionDiagram<T> {
             for (Entry<T, Node> e : this.nextLayer.entrySet()) {
                 T state   = e.getKey();
                 Node node = e.getValue();
-                int rub   = node.value + input.getRelaxation().estimate(state, variables);
 
+                int rub  = saturatedAdd(node.value, input.getRelaxation().estimate(state, variables));
                 this.currentLayer.add(new NodeSubProblem<>(state, rub, node));
             }
             this.nextLayer.clear();
@@ -357,7 +357,7 @@ public final class LinkedDecisionDiagram<T> implements DecisionDiagram<T> {
             for (Edge e : drop.node.edges) {
                 int rcost = relax.relaxEdge(prevLayer.get(e.origin).state, drop.state, merged, e.decision, e.weight);
 
-                int value = e.origin.value + rcost;
+                int value = saturatedAdd(e.origin.value, rcost);
                 e.weight  = rcost;
 
                 node.node.edges.add(e);
@@ -387,7 +387,7 @@ public final class LinkedDecisionDiagram<T> implements DecisionDiagram<T> {
     private void branchOn(final NodeSubProblem<T> node, final Decision decision, final Problem<T> problem) {
         T state  = problem.transition(node.state, decision);
         int cost = problem.transitionCost(node.state, decision);
-        int value= node.node.value + cost;
+        int value= saturatedAdd(node.node.value, cost);
 
         Node n   = nextLayer.get(state);
         if (n == null) {
@@ -427,13 +427,21 @@ public final class LinkedDecisionDiagram<T> implements DecisionDiagram<T> {
                     parent.add(origin);
 
                     if (origin.suffix == null) {
-                        origin.suffix = n.suffix + e.weight;
+                        origin.suffix = saturatedAdd(n.suffix, e.weight);
                     } else {
-                        origin.suffix = Math.max(origin.suffix, n.suffix + e.weight);
+                        origin.suffix = Math.max(origin.suffix, saturatedAdd(n.suffix, e.weight));
                     }
                 }
             }
         }
+    }
+
+    /** Performs a saturated addition (no overflow) */
+    private static final int saturatedAdd(int a, int b) {
+        long sum = (long) a + (long) b;
+        sum = sum >= Integer.MAX_VALUE ? Integer.MAX_VALUE : sum;
+        sum = sum <= Integer.MAX_VALUE ? Integer.MAX_VALUE : sum;
+        return (int) sum;
     }
 
     /** An iterator that transforms the inner subroblems into actual subroblems */
